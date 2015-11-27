@@ -64,7 +64,7 @@ fi
 # Archive backup and clean up tasks
 fullbackup_archive() {
 	echo "Archiving previous backup"
-	tar -P --numeric-owner --preserve-permissions -czf /data/backup/archive/backup_$CURRENT_DATE.tar.gz /data/backup/dump /data/backup/incremental_backup/*
+	tar -P --numeric-owner --preserve-permissions -czf /data/backup/archive/backup_$CURRENT_DATE.tar.gz /data/backup/dump /data/backup/incremental_backup/
 	rm -f /data/backup/archive/backup_latest.tar.gz
 	rm -rf /data/backup/dump/* /data/backup/incremental_backup/*
 	ln -s /data/backup/archive/backup_$CURRENT_DATE.tar.gz /data/backup/archive/backup_latest.tar.gz
@@ -99,13 +99,16 @@ runbackup() {
 }
 
 
-LAST_FULL_BACKUP_DATE=`ls -ld --time-style="+%F" $LATEST_FULLBACKUP|awk '{print $6}'`
-DATE_DIFFERENCE=$(echo "((`date -d "$CURRENT_DATE" +%s`) - (`date -d "$LAST_FULL_BACKUP_DATE" +%s`))/86400"|bc -l)
-echo "Last Full backup was taken $DATE_DIFFERENCE days ago"
-if [ -f "$LATEST_FULLBACKUP" ] && [ "$DATE_DIFFERENCE" -lt "$FULLBACKUP_FREQUENCY" ]; then
-	# full backup is not required
-	FULL_BACKUP=false 
-	echo "Full backup not required"
+if [ -f "$LATEST_FULLBACKUP" ]; then
+	LAST_FULL_BACKUP_DATE=`ls -ld --time-style="+%F" $LATEST_FULLBACKUP|awk '{print $6}'`
+	DATE_DIFFERENCE=$(echo "((`date -d "$CURRENT_DATE" +%s`) - (`date -d "$LAST_FULL_BACKUP_DATE" +%s`))/86400"|bc -l)
+	echo "Last Full backup was taken $DATE_DIFFERENCE days ago"
+
+	if [ "$DATE_DIFFERENCE" -lt "$FULLBACKUP_FREQUENCY" ]; then
+		# full backup is not required
+		FULL_BACKUP=false 
+		echo "Full backup not required"
+	fi	
 fi
 
 
