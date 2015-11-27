@@ -51,7 +51,7 @@ class mongodb-tayra-backup::generic()
   		mode => 755,
 	}
 	
-	file_line { 'sudoers_puppet_agent':
+	file_line { 'crontab-mongo-tayra-backup':
         path  => '/etc/crontab',
         line  => '0 6 * * * root /usr/local/bin/mongo-tayra-backup.sh',
 	}
