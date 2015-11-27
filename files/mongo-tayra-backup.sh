@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # ------------------------------------------------------------------------------------------------------------------------------------
 # Title			: MongoDB Backup
 # Description		: This script performs MongoDB full backup using mongodump and Incremental backup using the Tayra tool
@@ -101,7 +101,7 @@ runbackup() {
 
 if [ -f "$LATEST_FULLBACKUP" ]; then
 	LAST_FULL_BACKUP_DATE=`ls -ld --time-style="+%F" $LATEST_FULLBACKUP|awk '{print $6}'`
-	DATE_DIFFERENCE=$(echo "((`date -d "$CURRENT_DATE" +%s`) - (`date -d "$LAST_FULL_BACKUP_DATE" +%s`))/86400"|bc -l)
+	DATE_DIFFERENCE=$(echo "((`date -d "$CURRENT_DATE" +%s`) - (`date -d "$LAST_FULL_BACKUP_DATE" +%s`))/86400"|bc -l|cut -d "." -f1)
 	echo "Last Full backup was taken $DATE_DIFFERENCE days ago"
 
 	if [ "$DATE_DIFFERENCE" -lt "$FULLBACKUP_FREQUENCY" ]; then

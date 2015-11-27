@@ -1,18 +1,25 @@
 class mongodb-tayra-backup()
 {
 
-	$backup_skel_dir = ['/data/', '/data/backup', '/data/backup/archive', '/data/backup/dump', '/data/backup/incremental_backup', '/data/backup/tayra']
-
-  	file { "$backup_skel_dir":
-    		ensure => 'directory',
-    		owner  => 'root',
-    		group  => 'root',
-    		mode   => '0750'
-  	}
+	file { [ '/data',
+         	'/data/backup',
+         	'/data/backup/archive',
+         	'/data/backup/dump',
+		'/data/backup/incremental_backup',
+		'/data/backup/tayra', ]:
+           	ensure => directory,
+                owner  => 'root',
+                group  => 'root',
+                mode   => '0644'
+	}
 
   	package { "unzip":
         	ensure => installed,
     	}
+
+        package { "bc":
+                ensure => installed,
+        }
 	
 	# unzip and place tayra files under /data/backup/tayra
 	file { "/data/backup/tayra/Tayra-0.8.1.Beta3.zip":
@@ -25,9 +32,8 @@ class mongodb-tayra-backup()
 	}
 
 	exec { "unzip":
-  		command     => 'unzip /data/backup/tayra/Tayra-0.8.1.Beta3.zip -d /data/backup/tayra',
+  		command     => '/usr/bin/unzip /data/backup/tayra/Tayra-0.8.1.Beta3.zip -d /data/backup/tayra',
   		user        => 'root',
-  		require     => File["/data/backup/tayra"],
   		unless	    => "/usr/bin/test -f /data/backup/tayra/backup.sh",
   		refreshonly => true,
 	}
@@ -41,18 +47,14 @@ class mongodb-tayra-backup()
 		source  => 'puppet:///modules/mongodb-tayra-backup/mongo-tayra-backup.sh',
 	}
 
-	file { "/data/backup/tayra/backup.sh":
+	file { [ '/data/backup/tayra/backup.sh',
+		'/data/backup/tayra/restore.sh', ]:
 		ensure  => present,
 		mode => 755,
 	}
 
-	file { "/data/backup/tayra/restore.sh":
-  		ensure  => present,
-  		mode => 755,
-	}
-	
 	file_line { 'crontab-mongo-tayra-backup':
         	path  => '/etc/crontab',
-        	line  => '0 6 * * * root /usr/local/bin/mongo-tayra-backup.sh',
+        	line  => '0 6 * * * root /usr/local/bin/mongo-tayra-backup.sh > /dev/null',
 	}
 }
