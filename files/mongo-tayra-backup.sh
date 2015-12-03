@@ -22,7 +22,7 @@
 FULLBACKUP_FREQUENCY=14  # Default no. of days, can be overridden with command line parameter -d
 FULL_BACKUP=true
 FULLBACKUP_DIR=/data/backup/dump
-LATEST_FULLBACKUP=/data/backup/archive/backup_latest.tar.gz
+LATEST_ARCHIVE=/data/backup/archive/archive_latest.tar.gz
 TAYRA_DIR=/data/backup/tayra
 CURRENT_DATE=`date +%F`
 
@@ -64,10 +64,10 @@ fi
 # Archive backup and clean up tasks
 fullbackup_archive() {
 	echo "Archiving previous backup"
-	tar -P --numeric-owner --preserve-permissions -czf /data/backup/archive/backup_$CURRENT_DATE.tar.gz /data/backup/dump /data/backup/incremental_backup/
-	rm -f /data/backup/archive/backup_latest.tar.gz
+	tar -P --numeric-owner --preserve-permissions -czf /data/backup/archive/archive_$CURRENT_DATE.tar.gz /data/backup/dump /data/backup/incremental_backup/
+	rm -f /data/backup/archive/archive_latest.tar.gz
 	rm -rf /data/backup/dump/* /data/backup/incremental_backup/*
-	ln -s /data/backup/archive/backup_$CURRENT_DATE.tar.gz /data/backup/archive/backup_latest.tar.gz
+	ln -s /data/backup/archive/archive_$CURRENT_DATE.tar.gz /data/backup/archive/archive_latest.tar.gz
 }
 
 
