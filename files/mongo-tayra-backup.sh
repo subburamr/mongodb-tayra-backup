@@ -62,7 +62,7 @@ fi
 
 
 # Archive backup and clean up tasks
-fullbackup_archive() {
+archive_prev_backup() {
 	echo "Archiving previous backup"
 	tar -P --numeric-owner --preserve-permissions -czf /data/backup/archive/archive_$CURRENT_DATE.tar.gz /data/backup/dump /data/backup/incremental_backup/
 	rm -f /data/backup/archive/archive_latest.tar.gz
@@ -77,7 +77,7 @@ runbackup() {
 	#run the full backup 
 	if [ "$FULL_BACKUP" = true ] ; then
 		# Archive previous backup files
-		fullbackup_archive
+		[[ $(ls -A /data/backup/dump) ]] && archive_prev_backup
 		
 		# Get latest timestamp
 		echo "Executing a FULL backup"
