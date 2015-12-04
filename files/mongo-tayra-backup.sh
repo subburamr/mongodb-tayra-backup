@@ -77,8 +77,9 @@ runbackup() {
 	#run the full backup 
 	if [ "$FULL_BACKUP" = true ] ; then
 		# Archive previous backup files
-		[[ $(ls -A /data/backup/dump) ]] && archive_prev_backup
-		
+		if [ $(ls /data/backup/dump | wc -l) -ne 0 ]; then
+			archive_prev_backup
+		fi
 		# Get latest timestamp
 		echo "Executing a FULL backup"
 		LATEST_DB_TIMESTAMP=`mongo local --eval 'db.oplog.rs.find({}, {ts:1}).sort({$natural:-1}).limit(1).forEach(printjson)'|tail -1| awk -F'[(,]' '{print $2}'`
@@ -100,9 +101,9 @@ runbackup() {
 
 
 if [ -f "$LATEST_ARCHIVE" ]; then
-	LAST_FULL_BACKUP_DATE=`ls -ld --time-style="+%F" $LATEST_ARCHIVE|awk '{print $6}'`
-	DATE_DIFFERENCE=$(echo "((`date -d "$CURRENT_DATE" +%s`) - (`date -d "$LAST_FULL_BACKUP_DATE" +%s`))/86400"|bc -l|cut -d "." -f1)
-	echo "Last Full backup was taken $DATE_DIFFERENCE days ago"
+	LATEST_ARCHIVE_DATE=`ls -ld --time-style="+%F" $LATEST_ARCHIVE|awk '{print $6}'`
+	DATE_DIFFERENCE=$(echo "((`date -d "$CURRENT_DATE" +%s`) - (`date -d "$LATEST_ARCHIVE_DATE" +%s`))/86400"|bc -l|cut -d "." -f1)
+	echo "Last Archive was taken $DATE_DIFFERENCE days ago"
 
 	if [ "$DATE_DIFFERENCE" -lt "$FULLBACKUP_FREQUENCY" ]; then
 		# full backup is not required
@@ -126,7 +127,7 @@ fi
 
 # Unset variables initialized
 echo "Unsetting variables"
-for VARIABLES in FULLBACKUP_FREQUENCY FULL_BACKUP FULLBACKUP_DIR LATEST_ARCHIVE TAYRA_DIR CURRENT_DATE LAST_FULL_BACKUP_DATE DATE_DIFFERENCE OLD_BACKUP_PROCS LATEST_DB_TIMESTAMP IS_MASTER
+for VARIABLES in FULLBACKUP_FREQUENCY FULL_BACKUP FULLBACKUP_DIR LATEST_ARCHIVE TAYRA_DIR CURRENT_DATE LATEST_ARCHIVE_DATE DATE_DIFFERENCE OLD_BACKUP_PROCS LATEST_DB_TIMESTAMP IS_MASTER
 do
 	unset $VARIABLES
 done
