@@ -53,8 +53,8 @@ class mongodb-tayra-backup()
 		mode => 755,
 	}
 
-	file_line { 'crontab-mongo-tayra-backup':
-        	path  => '/etc/crontab',
-        	line  => '0 6 * * * root /usr/local/bin/mongo-tayra-backup.sh -d 3 > /dev/null',
-	}
+	#file_line { 'crontab-mongo-tayra-backup':
+        # 	path  => '/etc/crontab',
+        # 	line  => '0 6 * * * root /usr/local/bin/mongo-tayra-backup.sh -d 3 > /dev/null',
+	#}
 }
