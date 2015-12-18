@@ -34,14 +34,16 @@ usage () {
   echo "  $0"
   echo "  $0 [-d 14]"
   echo "  $0 [-d 14 -u <username> -p <password>]"
+  echo ""
+  echo "Options"
   echo "    -d number of days between full backup ; Default - 14"
-  echo "	-u username"
-  echo "	-p password"
+  echo "    -u username"
+  echo "    -p password"
   echo ""
   exit 1
 }
 
-while getopts "d:" opt; do
+while getopts "d:u:p:" opt; do
   case $opt in
     d)
       if ! echo $OPTARG | grep -q "[A-Za-z]" && [ -n "$OPTARG" ]
@@ -68,7 +70,7 @@ if [ -n "$OLD_BACKUP_PROCS" ]; then
 fi
 
 # Do we need username/password to access database
-if [ -n "$BACKUP_USERNAME" &&  -n "$BACKUP_PASSWORD"]; then
+if [ -n "$BACKUP_USERNAME" ] && [ -n "$BACKUP_PASSWORD" ]; then
   OPT="$OPT -u $BACKUP_USERNAME -p $BACKUP_PASSWORD"
   AUTHOPT="$OPT --authenticationDatabase admin"
 fi
