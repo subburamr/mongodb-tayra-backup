@@ -96,12 +96,12 @@ runbackup() {
 		fi
 		# Get latest timestamp
 		echo "Executing a FULL backup"
-		LATEST_DB_TIMESTAMP=`mongo local --eval 'db.oplog.rs.find({}, {ts:1}).sort({$natural:-1}).limit(1).forEach(printjson)'|tail -1| awk -F'[(,]' '{print $2}'`
+		LATEST_DB_TIMESTAMP=`mongo local $AUTHOPT --eval 'db.oplog.rs.find({}, {ts:1}).sort({$natural:-1}).limit(1).forEach(printjson)'|tail -1| awk -F'[(,]' '{print $2}'`
 		echo $LATEST_DB_TIMESTAMP
 		EXITSTATUS1=`echo $?`
 
 		# Write LATEST_TIMESTAMP to timestamp.out file under /data/backup/tayra
-		echo "{ \"ts\" : { \"\$ts\" : $LATEST_DB_TIMESTAMP , \"\$inc\" : 1} }" | tee /data/backup/tayra/timestamp.out 1> /dev/null
+		echo -n "{ \"ts\" : { \"\$ts\" : $LATEST_DB_TIMESTAMP , \"\$inc\" : 1} }" | tee /data/backup/tayra/timestamp.out 1> /dev/null
 
 		# Trigger mongodump to write to /data/backup/dump
 		mongodump $AUTHOPT -o $FULLBACKUP_DIR
