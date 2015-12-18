@@ -19,19 +19,24 @@
 
 
 
-FULLBACKUP_FREQUENCY=14  # Default no. of days, can be overridden with command line parameter -d
+FULLBACKUP_FREQUENCY=14  		# Default no. of days, can be overridden with command line parameter -d
 FULL_BACKUP=true
 FULLBACKUP_DIR=/data/backup/dump
 LATEST_ARCHIVE=/data/backup/archive/archive_latest.tar.gz
 TAYRA_DIR=/data/backup/tayra
 CURRENT_DATE=`date +%F`
+OPT="" 							# OPT string for use with Tayra
+AUTHOPT=""						# AUTHOPT string for use with mongodump
 
 usage () {
   echo ""
   echo "USAGE: "
   echo "  $0"
   echo "  $0 [-d 14]"
+  echo "  $0 [-d 14 -u <username> -p <password>]"
   echo "    -d number of days between full backup ; Default - 14"
+  echo "	-u username"
+  echo "	-p password"
   echo ""
   exit 1
 }
@@ -46,6 +51,8 @@ while getopts "d:" opt; do
         usage
       fi
     ;;
+    u) BACKUP_USERNAME=${OPTARG} ;;
+    p) BACKUP_PASSWORD=${OPTARG} ;;
     *)
       usage
     ;;
@@ -60,6 +67,11 @@ if [ -n "$OLD_BACKUP_PROCS" ]; then
 	kill -1 $OLD_BACKUP_PROCS
 fi
 
+# Do we need username/password to access database
+if [ -n "$BACKUP_USERNAME" &&  -n "$BACKUP_PASSWORD"]; then
+  OPT="$OPT -u $BACKUP_USERNAME -p $BACKUP_PASSWORD"
+  AUTHOPT="$OPT --authenticationDatabase admin"
+fi
 
 # Archive backup and clean up tasks
 archive_prev_backup() {
@@ -90,13 +102,13 @@ runbackup() {
 		echo "{ \"ts\" : { \"\$ts\" : $LATEST_DB_TIMESTAMP , \"\$inc\" : 1} }" | tee /data/backup/tayra/timestamp.out 1> /dev/null
 
 		# Trigger mongodump to write to /data/backup/dump
-		mongodump -o $FULLBACKUP_DIR
+		mongodump $AUTHOPT -o $FULLBACKUP_DIR
 		EXITSTATUS2=`echo $?`
 	fi
 
 	# Tayra backup run under $TAYRA_DIR so that the timestamp.out is picked up by the processes
 	cd $TAYRA_DIR 
-	/data/backup/tayra/backup.sh -f /data/backup/incremental_backup/backup.log.$CURRENT_DATE -t 1> /dev/null & 
+	/data/backup/tayra/backup.sh -f /data/backup/incremental_backup/backup.log.$CURRENT_DATE $OPT -t 1> /dev/null & 
 }
 
 
