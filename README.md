@@ -3,7 +3,8 @@ Puppet implementation of mongodb-tayra-backup
 This puppet module creates appropriate directory structure  under /data/backup and places the required scripts to take full backup using mongodump and incremental backup using tayra
 
 Add the below entry to crontab so that its run everyday
-	0 6 * * * root /usr/local/bin/mongo-tayra-backup.sh  > /dev/null
+
+	-	0 6 * * * root /usr/local/bin/mongo-tayra-backup.sh  > /dev/null
 
 How the backup script works?
 
