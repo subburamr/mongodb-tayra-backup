@@ -19,6 +19,10 @@
 
 
 
+# On exit of tayra process it should update timestamp.out, so it should not be sent (kill -9)SIGKILL.
+# Modification , the tayra script is to be spawned via expect and the spawned process ignores HUP signal. SO it should be terminated with kill -15(SIGTERM)
+
+
 FULLBACKUP_FREQUENCY=14  		# Default no. of days, can be overridden with command line parameter -d
 FULL_BACKUP=true
 FULLBACKUP_DIR=/data/backup/dump
@@ -27,6 +31,7 @@ TAYRA_DIR=/data/backup/tayra
 CURRENT_DATE=`date +%F`
 OPT="" 							# OPT string for use with Tayra
 AUTHOPT=""						# AUTHOPT string for use with mongodump
+SECURE=false					# Boolean to check if the DB requires authentication
 
 usage () {
   echo ""
@@ -66,13 +71,14 @@ done
 OLD_BACKUP_PROCS=$(ps aux | grep '/data/backup'|grep -v grep|awk '{print $2}')
 if [ -n "$OLD_BACKUP_PROCS" ]; then
 	echo "Terminating old backup processes"
-	kill -1 $OLD_BACKUP_PROCS
+	kill -15 $OLD_BACKUP_PROCS						
 fi
 
 # Do we need username/password to access database
 if [ -n "$BACKUP_USERNAME" ] && [ -n "$BACKUP_PASSWORD" ]; then
   OPT="$OPT -u $BACKUP_USERNAME -p $BACKUP_PASSWORD"
   AUTHOPT="$OPT --authenticationDatabase admin"
+  SECURE=true
 fi
 
 # Archive backup and clean up tasks
@@ -110,7 +116,11 @@ runbackup() {
 
 	# Tayra backup run under $TAYRA_DIR so that the timestamp.out is picked up by the processes
 	cd $TAYRA_DIR 
-	/data/backup/tayra/backup.sh -f /data/backup/incremental_backup/backup.log.$CURRENT_DATE $OPT -t 1> /dev/null & 
+	if [ "$SECURE" = true ] ; then
+		/data/backup/tayra/backup_expect.sh $BACKUP_USERNAME $BACKUP_PASSWORD $CURRENT_DATE 1> /dev/null &
+	else
+		/data/backup/tayra/backup.sh -f /data/backup/incremental_backup/backup.log.$CURRENT_DATE -t 1> /dev/null &
+	fi 
 }
 
 

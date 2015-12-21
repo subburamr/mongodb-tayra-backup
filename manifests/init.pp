@@ -20,6 +20,10 @@ class mongodb-tayra-backup()
         package { "bc":
                 ensure => installed,
         }
+
+        package { "expect":
+                ensure => installed,
+        }
 	
 	# unzip and place tayra files under /data/backup/tayra
 	file { "/data/backup/tayra/Tayra-0.8.1.Beta3.zip":
@@ -52,6 +56,14 @@ class mongodb-tayra-backup()
 		ensure  => present,
 		mode => 755,
 	}
+
+        file { "/data/backup/tayra/backup_expect.sh":
+                owner   => root,
+                group   => root,
+                mode    => 755,
+                ensure  => present,
+                source  => 'puppet:///modules/mongodb-tayra-backup/backup_expect.sh',
+        }
 
 	#file_line { 'crontab-mongo-tayra-backup':
         # 	path  => '/etc/crontab',
