@@ -3,6 +3,7 @@ puppet implementation of mongodb-tayra-backup
 
 
 How it works?
+	
 	- Add the below entry to crontab
 	0 6 * * * root /usr/local/bin/mongo-tayra-backup.sh -d 3 > /dev/null
 
@@ -16,6 +17,7 @@ How it works?
 
 
 Secure Databases:
+
 	- For secure databases, the script would need to be passed username and password parameters. 
 
 	Crontab entry:
