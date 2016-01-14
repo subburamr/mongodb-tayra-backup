@@ -70,7 +70,7 @@ class mongodb-tayra-backup()
                 group   => root,
                 mode    => 700,
                 ensure  => present,
-                source  => 'puppet:///modules/graphstore-online-backup/mongo-tayra-backup',
+                source  => 'puppet:///modules/mongodb-tayra-backup/mongo-tayra-backup',
         }
 
 	#file_line { 'crontab-mongo-tayra-backup':
