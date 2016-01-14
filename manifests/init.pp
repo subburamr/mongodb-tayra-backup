@@ -65,6 +65,14 @@ class mongodb-tayra-backup()
                 source  => 'puppet:///modules/mongodb-tayra-backup/backup_expect.sh',
         }
 
+        file { '/etc/cron.d/mongo-tayra-backup':
+                owner   => root,
+                group   => root,
+                mode    => 700,
+                ensure  => present,
+                source  => 'puppet:///modules/graphstore-online-backup/mongo-tayra-backup',
+        }
+
 	#file_line { 'crontab-mongo-tayra-backup':
         # 	path  => '/etc/crontab',
         # 	line  => '0 6 * * * root /usr/local/bin/mongo-tayra-backup.sh -d 3 > /dev/null',
