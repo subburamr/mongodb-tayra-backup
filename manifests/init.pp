@@ -41,6 +41,7 @@ class mongodb-tayra-backup()
   		user        => 'root',
   		unless	    => "/usr/bin/test -f /opt/tayra/backup.sh",
   		refreshonly => true,
+  		before => File[ '/opt/tayra/backup.sh',	'/opt/tayra/restore.sh', ],
 	}
 
 	
@@ -54,6 +55,7 @@ class mongodb-tayra-backup()
 
 	file { [ '/opt/tayra/backup.sh',
 		'/opt/tayra/restore.sh', ]:
+		require => Exec['unzip'],
 		ensure  => present,
 		mode => 755,
 	}
