@@ -1,5 +1,5 @@
-<% if @mongodb-tayra-backup::secure != false %>
+<%- if @secure == ("true") then -%>
 0 6 * * * root /usr/local/bin/mongo-tayra-backup.sh -d 3 -u siteBackupAdmin -p Sn0suURIbctiI > /dev/null
-<% else %> 
+<%- else -%> 
 0 6 * * * root /usr/local/bin/mongo-tayra-backup.sh -d 3 > /dev/null
-<% end %>
+<%- end -%>
