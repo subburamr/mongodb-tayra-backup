@@ -1,6 +1,5 @@
 class mongodb-tayra-backup()
 {
-	$tayrascripts = [ "/opt/tayra/backup.sh", "/opt/tayra/restore.sh", ]
 	file { [ '/data',
          	'/data/backup',
          	'/data/backup/mongodb',
@@ -41,7 +40,7 @@ class mongodb-tayra-backup()
   		user        => 'root',
   		unless	    => "/usr/bin/test -f /opt/tayra/backup.sh",
   		refreshonly => true,
-		before 	=> File["$tayrascripts"],
+		before 	=> [ File['/opt/tayra/backup.sh'], File['/opt/tayra/restore.sh'] ],
 	}
 
 	
@@ -53,7 +52,8 @@ class mongodb-tayra-backup()
 		source  => 'puppet:///modules/mongodb-tayra-backup/mongo-tayra-backup.sh',
 	}
 
-	file { "$tayrascripts": 
+	file { [ '/opt/tayra/backup.sh',
+		 '/opt/tayra/restore.sh', ]: 
 		require => Exec['unzip'],
 		ensure  => present,
 		mode => 755,
