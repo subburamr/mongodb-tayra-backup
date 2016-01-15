@@ -2,17 +2,19 @@
 # ------------------------------------------------------------------------------------------------------------------------------------
 # Title			: MongoDB Backup
 # Description		: This script performs MongoDB full backup using mongodump and Incremental backup using the Tayra tool
-# VERSION		: 1.0
+# VERSION		: 1.1
 # Author		: Subburam Rajaram
-# Date			: 16.11.2015
+# Date			: 15.1.2016
 # ------------------------------------------------------------------------------------------------------------------------------------
 
 # Backup Directory Structure
-# /data/backup
-# ├── archive            				- Old backups
-# ├── dump						- Current full backup taken with mongodump
-# ├── incremental_backup				- Current Incremental backup with Tayra
-# └── tayra  						- Tayra program
+# /data/backup/mongodb
+# ├── archive            				- Archived backups
+# ├── full						- Latest full backup taken with mongodump
+# ├── incremental				- Latest Incremental backup with Tayra
+# 
+#
+# /opt/tayra  						- Tayra program
 #     ├── backup.sh					- Tayra	Incremental Backup script
 #     ├── restore.sh					- Tayra Restore Script
 #     └── timestamp.out					- Tayra stores oplog after the indicated timestamp present in this file.
@@ -20,14 +22,14 @@
 
 
 # On exit of tayra process it should update timestamp.out, so it should not be sent (kill -9)SIGKILL.
-# Modification , the tayra script is to be spawned via expect and the spawned process ignores HUP signal. SO it should be terminated with kill -15(SIGTERM)
+# Modification, the tayra script is to be spawned via expect and the spawned process ignores HUP signal. So it should be terminated with kill -15(SIGTERM)
 
 
 FULLBACKUP_FREQUENCY=14  		# Default no. of days, can be overridden with command line parameter -d
 FULL_BACKUP=true
-FULLBACKUP_DIR=/data/backup/dump
-LATEST_ARCHIVE=/data/backup/archive/archive_latest.tar.gz
-TAYRA_DIR=/data/backup/tayra
+FULLBACKUP_DIR=/data/backup/mongodb/full
+LATEST_ARCHIVE=/data/backup/mongodb/archive/archive_latest.tar.gz
+TAYRA_DIR=/opt/tayra
 CURRENT_DATE=`date +%F`
 OPT="" 							# OPT string for use with Tayra
 AUTHOPT=""						# AUTHOPT string for use with mongodump
@@ -68,7 +70,7 @@ done
 
 
 # Cleanup old backup processes
-OLD_BACKUP_PROCS=$(ps aux | grep '/data/backup'|grep -v grep|awk '{print $2}')
+OLD_BACKUP_PROCS=$(ps aux | grep '/data/backup/mongodb'|grep -v grep|awk '{print $2}')
 if [ -n "$OLD_BACKUP_PROCS" ]; then
 	echo "Terminating old backup processes"
 	kill -15 $OLD_BACKUP_PROCS						
@@ -84,10 +86,10 @@ fi
 # Archive backup and clean up tasks
 archive_prev_backup() {
 	echo "Archiving previous backup"
-	tar -P --numeric-owner --preserve-permissions -czf /data/backup/archive/archive_$CURRENT_DATE.tar.gz /data/backup/dump /data/backup/incremental_backup/
-	rm -f /data/backup/archive/archive_latest.tar.gz
-	rm -rf /data/backup/dump/* /data/backup/incremental_backup/*
-	ln -s /data/backup/archive/archive_$CURRENT_DATE.tar.gz /data/backup/archive/archive_latest.tar.gz
+	tar -P --numeric-owner --preserve-permissions -czf /data/backup/mongodb/archive/archive_$CURRENT_DATE.tar.gz /data/backup/mongodb/full /data/backup/mongodb/incremental
+	rm -f /data/backup/mongodb/archive/archive_latest.tar.gz
+	rm -rf /data/backup/mongodb/full/* /data/backup/mongodb/incremental/*
+	ln -s /data/backup/mongodb/archive/archive_$CURRENT_DATE.tar.gz /data/backup/mongodb/archive/archive_latest.tar.gz
 }
 
 
@@ -97,7 +99,7 @@ runbackup() {
 	#run the full backup 
 	if [ "$FULL_BACKUP" = true ] ; then
 		# Archive previous backup files
-		if [ $(ls /data/backup/dump | wc -l) -ne 0 ]; then
+		if [ $(ls /data/backup/mongodb/full | wc -l) -ne 0 ]; then
 			archive_prev_backup
 		fi
 		# Get latest timestamp
@@ -106,20 +108,20 @@ runbackup() {
 		echo $LATEST_DB_TIMESTAMP
 		EXITSTATUS1=`echo $?`
 
-		# Write LATEST_TIMESTAMP to timestamp.out file under /data/backup/tayra
-		echo -n "{ \"ts\" : { \"\$ts\" : $LATEST_DB_TIMESTAMP , \"\$inc\" : 1} }" | tee /data/backup/tayra/timestamp.out 1> /dev/null
+		# Write LATEST_TIMESTAMP to timestamp.out file under /opt/tayra
+		echo -n "{ \"ts\" : { \"\$ts\" : $LATEST_DB_TIMESTAMP , \"\$inc\" : 1} }" | tee /opt/tayra/timestamp.out 1> /dev/null
 
-		# Trigger mongodump to write to /data/backup/dump
+		# Trigger mongodump to write full backup to /data/backup/mongodb/full
 		mongodump $AUTHOPT -o $FULLBACKUP_DIR
 		EXITSTATUS2=`echo $?`
 	fi
 
-	# Tayra backup run under $TAYRA_DIR so that the timestamp.out is picked up by the processes
+	# Tayra backup run under $TAYRA_DIR as working directory so that the timestamp.out is picked up by the processes
 	cd $TAYRA_DIR 
 	if [ "$SECURE" = true ] ; then
-		/data/backup/tayra/backup_expect.sh $BACKUP_USERNAME $BACKUP_PASSWORD $CURRENT_DATE 1> /dev/null &
+		/opt/tayra/backup_expect.sh $BACKUP_USERNAME $BACKUP_PASSWORD $CURRENT_DATE 1> /dev/null &
 	else
-		/data/backup/tayra/backup.sh -f /data/backup/incremental_backup/backup.log.$CURRENT_DATE -t 1> /dev/null &
+		/opt/tayra/backup.sh -f /data/backup/mongodb/incremental/backup.log.$CURRENT_DATE -t 1> /dev/null &
 	fi 
 }
 
