@@ -144,7 +144,7 @@ clean_up() {
 	exit $1
 }
 
-trap clean_up SIGHUP SIGINT SIGTERM
+trap clean_up HUP INT TERM
 
 if [ -f "$LATEST_ARCHIVE" ]; then
 	LATEST_ARCHIVE_DATE=`ls -ld --time-style="+%F" $LATEST_ARCHIVE|awk '{print $6}'`
