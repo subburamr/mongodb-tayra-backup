@@ -34,6 +34,7 @@ CURRENT_DATE=`date +%F`
 OPT="" 							# OPT string for use with Tayra
 AUTHOPT=""						# AUTHOPT string for use with mongodump
 SECURE=false					# Boolean to check if the DB requires authentication
+PROGNAME=$(basename $0)
 
 usage () {
   echo ""
@@ -49,6 +50,27 @@ usage () {
   echo ""
   exit 1
 }
+
+# Exit on Error
+error_exit() {
+	# Display error message and exit
+	echo "${PROGNAME}: ${1:-"Unknown Error"}" 1>&2
+	clean_up 1
+}
+
+# Clean up function 
+clean_up() {
+	# Perform program exit housekeeping
+	# Optionally accepts an exit status
+	# Unset variables initialized
+	echo "Unsetting variables"
+	for VARIABLES in FULLBACKUP_FREQUENCY FULL_BACKUP FULLBACKUP_DIR LATEST_ARCHIVE TAYRA_DIR CURRENT_DATE LATEST_ARCHIVE_DATE DATE_DIFFERENCE OLD_BACKUP_PROCS LATEST_DB_TIMESTAMP IS_MASTER
+	do
+		unset $VARIABLES
+	done
+	exit $1
+}
+
 
 while getopts "d:u:p:" opt; do
   case $opt in
@@ -124,25 +146,6 @@ runbackup() {
 	fi 
 }
 
-# Exit on Error
-error_exit() {
-	# Display error message and exit
-	echo "${PROGNAME}: ${1:-"Unknown Error"}" 1>&2
-	clean_up 1
-}
-
-# Clean up function 
-clean_up() {
-	# Perform program exit housekeeping
-	# Optionally accepts an exit status
-	# Unset variables initialized
-	echo "Unsetting variables"
-	for VARIABLES in FULLBACKUP_FREQUENCY FULL_BACKUP FULLBACKUP_DIR LATEST_ARCHIVE TAYRA_DIR CURRENT_DATE LATEST_ARCHIVE_DATE DATE_DIFFERENCE OLD_BACKUP_PROCS LATEST_DB_TIMESTAMP IS_MASTER
-	do
-		unset $VARIABLES
-	done
-	exit $1
-}
 
 trap clean_up HUP INT TERM
 
