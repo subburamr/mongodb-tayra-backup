@@ -95,7 +95,7 @@ done
 OLD_BACKUP_PROCS=$(ps aux | grep '/data/backup/mongodb'|grep -v grep|awk '{print $2}')
 if [ -n "$OLD_BACKUP_PROCS" ]; then
 	echo "Terminating old backup processes"
-	kill -15 $OLD_BACKUP_PROCS || error_exit "The previous backup processes could not be killed! Aborting"						
+	kill -15 $OLD_BACKUP_PROCS || error_exit "$LINENO: The previous backup processes could not be killed! Aborting"						
 fi
 
 # Do we need username/password to access database
@@ -108,7 +108,7 @@ fi
 # Archive backup and clean up tasks
 archive_prev_backup() {
 	echo "Archiving previous backup"
-	tar -P --numeric-owner --preserve-permissions -czf /data/backup/mongodb/archive/archive_$CURRENT_DATE.tar.gz /data/backup/mongodb/full /data/backup/mongodb/incremental || error_exit "Unable to archive previous backup! Aborting"
+	tar -P --numeric-owner --preserve-permissions -czf /data/backup/mongodb/archive/archive_$CURRENT_DATE.tar.gz /data/backup/mongodb/full /data/backup/mongodb/incremental || error_exit "$LINENO: Unable to archive previous backup! Aborting"
 	rm -f /data/backup/mongodb/archive/archive_latest.tar.gz
 	rm -rf /data/backup/mongodb/full/* /data/backup/mongodb/incremental/*
 	ln -s /data/backup/mongodb/archive/archive_$CURRENT_DATE.tar.gz /data/backup/mongodb/archive/archive_latest.tar.gz
@@ -130,15 +130,15 @@ runbackup() {
 		#EXITSTATUS1=`echo $?`
 
 		# Write LATEST_TIMESTAMP to timestamp.out file under /opt/tayra
-		echo -n "{ \"ts\" : { \"\$ts\" : $LATEST_DB_TIMESTAMP , \"\$inc\" : 1} }" | tee /opt/tayra/timestamp.out 1> /dev/null || error_exit "Unable to update timestamp.out file! Aborting"
+		echo -n "{ \"ts\" : { \"\$ts\" : $LATEST_DB_TIMESTAMP , \"\$inc\" : 1} }" | tee /opt/tayra/timestamp.out 1> /dev/null || error_exit "$LINENO: Unable to update timestamp.out file! Aborting"
 
 		# Trigger mongodump to write full backup to /data/backup/mongodb/full
-		mongodump $AUTHOPT -o $FULLBACKUP_DIR || error_exit "Unable to take backup using mongodump"
+		mongodump $AUTHOPT -o $FULLBACKUP_DIR || error_exit "$LINENO: Unable to take backup using mongodump"
 		#EXITSTATUS2=`echo $?`
 	fi
 
 	# Tayra backup run under $TAYRA_DIR as working directory so that the timestamp.out is picked up by the processes
-	cd $TAYRA_DIR || error_exit "Cannot change directory! Aborting"
+	cd $TAYRA_DIR || error_exit "$LINENO: Cannot change directory! Aborting"
 	if [ "$SECURE" = true ] ; then
 		/opt/tayra/backup_expect.sh $BACKUP_USERNAME $BACKUP_PASSWORD $CURRENT_DATE 1> /dev/null &
 	else
@@ -167,7 +167,7 @@ IS_MASTER=`mongo --quiet --eval "d=db.isMaster(); print( d['ismaster'] );"` #
 if [ "$IS_MASTER" = true ] ; then
 	# Try stepping down
 	##  	mongo --quiet --eval "rs.stepDown();"
-	echo "Could not proceed with the backup as I am the Primary node" && error_exit "Unable to take backup using mongodump. Aborting"
+	echo "Could not proceed with the backup as I am the Primary node" && error_exit "$LINENO: Unable to take backup using mongodump. Aborting"
 else 
 	# I am a secondary node, safe to proceed with the backup 
 	runbackup
