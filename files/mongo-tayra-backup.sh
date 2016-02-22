@@ -35,8 +35,9 @@ OPT="" 							# OPT string for use with Tayra
 AUTHOPT=""						# AUTHOPT string for use with mongodump
 SECURE=false					# Boolean to check if the DB requires authentication
 PROGNAME=$(basename $0)
+LOGSTAMP="$(date -u) $(hostname) ${PROGNAME}"
 
-echo "$(date -u) $(hostname) ${PROGNAME}:Initiating mongodb-tayra script"
+echo "$LOGSTAMP:Initiating mongodb-tayra script"
 usage () {
   echo ""
   echo "USAGE: "
@@ -55,7 +56,7 @@ usage () {
 # Exit on Error
 error_exit() {
 	# Display error message and exit
-	echo "$(date -u) $(hostname) ${PROGNAME}: ERROR ${1:-"Unknown Error"}" 1>&2
+	echo "$LOGSTAMP: ERROR ${1:-"Unknown Error"}" 1>&2
 	clean_up 1
 }
 
@@ -65,15 +66,14 @@ clean_up() {
 	# Optionally accepts an exit status
 	# Unset variables initialized
 	# echo "Unsetting variables"
-	for VARIABLES in FULLBACKUP_FREQUENCY FULL_BACKUP FULLBACKUP_DIR LATEST_ARCHIVE TAYRA_DIR CURRENT_DATE LATEST_ARCHIVE_DATE DATE_DIFFERENCE OLD_BACKUP_PROCS LATEST_DB_TIMESTAMP IS_MASTER
+	if [ $# -eq 0 ]
+  		then
+  			echo "$LOGSTAMP: mongodb-tayra script has completed successfully"
+	fi
+	for VARIABLES in FULLBACKUP_FREQUENCY FULL_BACKUP FULLBACKUP_DIR LATEST_ARCHIVE TAYRA_DIR CURRENT_DATE LATEST_ARCHIVE_DATE DATE_DIFFERENCE OLD_BACKUP_PROCS LATEST_DB_TIMESTAMP IS_MASTER LOGSTAMP
 	do
 		unset $VARIABLES
 	done
-
-	if [ $# -eq 0 ]
-  		then
-  			echo "$(date -u) $(hostname) ${PROGNAME}: mongodb-tayra script has completed successfully"
-	fi
 	exit $1
 }
 
@@ -100,7 +100,7 @@ done
 # Cleanup old backup processes
 OLD_BACKUP_PROCS=$(ps aux | grep '/data/backup/mongodb'|grep -v grep|awk '{print $2}')
 if [ -n "$OLD_BACKUP_PROCS" ]; then
-	echo "$(date -u) $(hostname) ${PROGNAME}: Terminating old backup processes"
+	echo "$LOGSTAMP: Terminating old backup processes"
 	kill -15 $OLD_BACKUP_PROCS || error_exit "$LINENO: The previous backup processes could not be killed! Aborting"						
 fi
 
@@ -113,7 +113,7 @@ fi
 
 # Archive backup and clean up tasks
 archive_prev_backup() {
-	echo "$(date -u) $(hostname) ${PROGNAME}: Archiving previous backup"
+	echo "$LOGSTAMP: Archiving previous backup"
 	tar -P --numeric-owner --preserve-permissions -czf /data/backup/mongodb/archive/archive_$CURRENT_DATE.tar.gz /data/backup/mongodb/full /data/backup/mongodb/incremental || error_exit "$LINENO: Unable to archive previous backup! Aborting"
 	rm -f /data/backup/mongodb/archive/archive_latest.tar.gz
 	rm -rf /data/backup/mongodb/full/* /data/backup/mongodb/incremental/*
@@ -130,7 +130,7 @@ runbackup() {
 			archive_prev_backup
 		fi
 		# Get latest timestamp
-		echo "$(date -u) $(hostname) ${PROGNAME}: Executing a FULL backup"
+		echo "$LOGSTAMP: Executing a FULL backup"
 		LATEST_DB_TIMESTAMP=`mongo local $AUTHOPT --eval 'db.oplog.rs.find({}, {ts:1}).sort({$natural:-1}).limit(1).forEach(printjson)'|tail -1| awk -F'[(,]' '{print $2}'`
 		echo $LATEST_DB_TIMESTAMP
 		#EXITSTATUS1=`echo $?`
@@ -158,12 +158,12 @@ trap clean_up HUP INT TERM
 if [ -f "$LATEST_ARCHIVE" ]; then
 	LATEST_ARCHIVE_DATE=`ls -ld --time-style="+%F" $LATEST_ARCHIVE|awk '{print $6}'`
 	DATE_DIFFERENCE=$(echo "((`date -d "$CURRENT_DATE" +%s`) - (`date -d "$LATEST_ARCHIVE_DATE" +%s`))/86400"|bc -l|cut -d "." -f1)
-	echo "$(date -u) $(hostname) ${PROGNAME}: Last Archive was taken $DATE_DIFFERENCE days ago"
+	echo "$LOGSTAMP: Last Archive was taken $DATE_DIFFERENCE days ago"
 
 	if [ "$DATE_DIFFERENCE" -lt "$FULLBACKUP_FREQUENCY" ]; then
 		# full backup is not required
 		FULL_BACKUP=false 
-		echo "$(date -u) $(hostname) ${PROGNAME}: Full backup not required"
+		echo "$LOGSTAMP: Full backup not required"
 	fi	
 fi
 
@@ -173,7 +173,7 @@ IS_MASTER=`mongo --quiet --eval "d=db.isMaster(); print( d['ismaster'] );"` #
 if [ "$IS_MASTER" = true ] ; then
 	# Try stepping down
 	##  	mongo --quiet --eval "rs.stepDown();"
-	echo "$(date -u) $(hostname) ${PROGNAME}: Could not proceed with the backup as I am the Primary node" && error_exit "$LINENO: Unable to take backup using mongodump. Aborting"
+	error_exit "$LINENO: Unable to take backup as I am the Primary node. Aborting"
 else 
 	# I am a secondary node, safe to proceed with the backup 
 	runbackup
