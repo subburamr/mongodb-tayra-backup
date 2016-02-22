@@ -24,7 +24,6 @@
 # On exit of tayra process it should update timestamp.out, so it should not be sent (kill -9)SIGKILL.
 # Modification, the tayra script is to be spawned via expect and the spawned process ignores HUP signal. So it should be terminated with kill -15(SIGTERM)
 
-
 FULLBACKUP_FREQUENCY=14  		# Default no. of days, can be overridden with command line parameter -d
 FULL_BACKUP=true
 FULLBACKUP_DIR=/data/backup/mongodb/full
@@ -37,7 +36,7 @@ SECURE=false					# Boolean to check if the DB requires authentication
 PROGNAME=$(basename $0)
 LOGSTAMP="$(date) $(hostname) ${PROGNAME}"
 
-echo "$LOGSTAMP:Initiating the script"
+echo "$LOGSTAMP: Initiating the script"
 usage () {
   echo ""
   echo "USAGE: "
@@ -62,10 +61,6 @@ error_exit() {
 
 # Clean up function 
 clean_up() {
-	# Perform program exit housekeeping
-	# Optionally accepts an exit status
-	# Unset variables initialized
-	# echo "Unsetting variables"
 	if [ $# -eq 0 ]
   		then
   			echo "$LOGSTAMP: Script has completed successfully"
@@ -76,7 +71,6 @@ clean_up() {
 	done
 	exit $1
 }
-
 
 while getopts "d:u:p:" opt; do
   case $opt in
@@ -129,21 +123,17 @@ runbackup() {
 		if [ $(ls /data/backup/mongodb/full | wc -l) -ne 0 ]; then
 			archive_prev_backup
 		fi
-		# Get latest timestamp
 		echo "$LOGSTAMP: Executing a FULL backup"
 		LATEST_DB_TIMESTAMP=`mongo local $AUTHOPT --eval 'db.oplog.rs.find({}, {ts:1}).sort({$natural:-1}).limit(1).forEach(printjson)'|tail -1| awk -F'[(,]' '{print $2}'`
 		echo $LATEST_DB_TIMESTAMP
-		#EXITSTATUS1=`echo $?`
 
 		# Write LATEST_TIMESTAMP to timestamp.out file under /opt/tayra
 		echo -n "{ \"ts\" : { \"\$ts\" : $LATEST_DB_TIMESTAMP , \"\$inc\" : 1} }" | tee /opt/tayra/timestamp.out 1> /dev/null || error_exit "$LINENO: Unable to update timestamp.out file! Aborting"
 
 		# Trigger mongodump to write full backup to /data/backup/mongodb/full
 		mongodump $AUTHOPT -o $FULLBACKUP_DIR || error_exit "$LINENO: Unable to take backup using mongodump"
-		#EXITSTATUS2=`echo $?`
 	fi
 
-	# Tayra backup run under $TAYRA_DIR as working directory so that the timestamp.out is picked up by the processes
 	cd $TAYRA_DIR || error_exit "$LINENO: Cannot change directory! Aborting"
 	if [ "$SECURE" = true ] ; then
 		/opt/tayra/backup_expect.sh $BACKUP_USERNAME $BACKUP_PASSWORD $CURRENT_DATE 1> /dev/null &
@@ -151,7 +141,6 @@ runbackup() {
 		/opt/tayra/backup.sh -f /data/backup/mongodb/incremental/backup.log.$CURRENT_DATE -t 1> /dev/null &
 	fi 
 }
-
 
 trap clean_up HUP INT TERM
 
@@ -161,18 +150,14 @@ if [ -f "$LATEST_ARCHIVE" ]; then
 	echo "$LOGSTAMP: Last Archive was taken $DATE_DIFFERENCE days ago"
 
 	if [ "$DATE_DIFFERENCE" -lt "$FULLBACKUP_FREQUENCY" ]; then
-		# full backup is not required
 		FULL_BACKUP=false 
 		echo "$LOGSTAMP: Full backup not required"
 	fi	
 fi
 
-
 # Check if the host is master 
 IS_MASTER=`mongo --quiet --eval "d=db.isMaster(); print( d['ismaster'] );"` #
 if [ "$IS_MASTER" = true ] ; then
-	# Try stepping down
-	##  	mongo --quiet --eval "rs.stepDown();"
 	error_exit "$LINENO: Unable to take backup as I am the Primary node. Aborting"
 else 
 	# I am a secondary node, safe to proceed with the backup 
