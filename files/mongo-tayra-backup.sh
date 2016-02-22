@@ -35,9 +35,9 @@ OPT="" 							# OPT string for use with Tayra
 AUTHOPT=""						# AUTHOPT string for use with mongodump
 SECURE=false					# Boolean to check if the DB requires authentication
 PROGNAME=$(basename $0)
-LOGSTAMP="$(date -u) $(hostname) ${PROGNAME}"
+LOGSTAMP="$(date) $(hostname) ${PROGNAME}"
 
-echo "$LOGSTAMP:Initiating mongodb-tayra script"
+echo "$LOGSTAMP:Initiating the script"
 usage () {
   echo ""
   echo "USAGE: "
@@ -68,7 +68,7 @@ clean_up() {
 	# echo "Unsetting variables"
 	if [ $# -eq 0 ]
   		then
-  			echo "$LOGSTAMP: mongodb-tayra script has completed successfully"
+  			echo "$LOGSTAMP: Script has completed successfully"
 	fi
 	for VARIABLES in FULLBACKUP_FREQUENCY FULL_BACKUP FULLBACKUP_DIR LATEST_ARCHIVE TAYRA_DIR CURRENT_DATE LATEST_ARCHIVE_DATE DATE_DIFFERENCE OLD_BACKUP_PROCS LATEST_DB_TIMESTAMP IS_MASTER LOGSTAMP
 	do
