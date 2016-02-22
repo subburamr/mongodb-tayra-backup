@@ -69,6 +69,11 @@ clean_up() {
 	do
 		unset $VARIABLES
 	done
+
+	if [ $# -eq 0 ]
+  		then
+  			echo "$CURRENT_DATE ${PROGNAME}:mongodb-tayra script has completed successfully"
+	fi
 	exit $1
 }
 
@@ -175,4 +180,3 @@ else
 fi
 
 clean_up
-echo "$CURRENT_DATE ${PROGNAME}:mongodb-tayra script has completed successfully"
