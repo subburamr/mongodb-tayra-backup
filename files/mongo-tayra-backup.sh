@@ -36,7 +36,7 @@ AUTHOPT=""						# AUTHOPT string for use with mongodump
 SECURE=false					# Boolean to check if the DB requires authentication
 PROGNAME=$(basename $0)
 
-echo "$CURRENT_DATE ${PROGNAME}:Initiating mongodb-tayra script"
+echo "$(date -u) ${PROGNAME}:Initiating mongodb-tayra script"
 usage () {
   echo ""
   echo "USAGE: "
@@ -55,7 +55,7 @@ usage () {
 # Exit on Error
 error_exit() {
 	# Display error message and exit
-	echo "${PROGNAME}: ${1:-"Unknown Error"}" 1>&2
+	echo "$(date -u) ${PROGNAME}: ERROR ${1:-"Unknown Error"}" 1>&2
 	clean_up 1
 }
 
@@ -72,7 +72,7 @@ clean_up() {
 
 	if [ $# -eq 0 ]
   		then
-  			echo "$CURRENT_DATE ${PROGNAME}:mongodb-tayra script has completed successfully"
+  			echo "$(date -u) ${PROGNAME}:mongodb-tayra script has completed successfully"
 	fi
 	exit $1
 }
@@ -100,8 +100,8 @@ done
 # Cleanup old backup processes
 OLD_BACKUP_PROCS=$(ps aux | grep '/data/backup/mongodb'|grep -v grep|awk '{print $2}')
 if [ -n "$OLD_BACKUP_PROCS" ]; then
-	echo "Terminating old backup processes"
-	kill -15 $OLD_BACKUP_PROCS || error_exit "$LINENO: The previous backup processes could not be killed! Aborting"						
+	echo "$(date -u) ${PROGNAME}: Terminating old backup processes"
+	kill -15 $OLD_BACKUP_PROCS || error_exit "$(date -u) $LINENO: The previous backup processes could not be killed! Aborting"						
 fi
 
 # Do we need username/password to access database
@@ -113,8 +113,8 @@ fi
 
 # Archive backup and clean up tasks
 archive_prev_backup() {
-	echo "Archiving previous backup"
-	tar -P --numeric-owner --preserve-permissions -czf /data/backup/mongodb/archive/archive_$CURRENT_DATE.tar.gz /data/backup/mongodb/full /data/backup/mongodb/incremental || error_exit "$LINENO: Unable to archive previous backup! Aborting"
+	echo "$(date -u) ${PROGNAME}: Archiving previous backup"
+	tar -P --numeric-owner --preserve-permissions -czf /data/backup/mongodb/archive/archive_$CURRENT_DATE.tar.gz /data/backup/mongodb/full /data/backup/mongodb/incremental || error_exit "$(date -u) $LINENO: Unable to archive previous backup! Aborting"
 	rm -f /data/backup/mongodb/archive/archive_latest.tar.gz
 	rm -rf /data/backup/mongodb/full/* /data/backup/mongodb/incremental/*
 	ln -s /data/backup/mongodb/archive/archive_$CURRENT_DATE.tar.gz /data/backup/mongodb/archive/archive_latest.tar.gz
@@ -130,21 +130,21 @@ runbackup() {
 			archive_prev_backup
 		fi
 		# Get latest timestamp
-		echo "Executing a FULL backup"
+		echo "$(date -u) ${PROGNAME}: Executing a FULL backup"
 		LATEST_DB_TIMESTAMP=`mongo local $AUTHOPT --eval 'db.oplog.rs.find({}, {ts:1}).sort({$natural:-1}).limit(1).forEach(printjson)'|tail -1| awk -F'[(,]' '{print $2}'`
 		echo $LATEST_DB_TIMESTAMP
 		#EXITSTATUS1=`echo $?`
 
 		# Write LATEST_TIMESTAMP to timestamp.out file under /opt/tayra
-		echo -n "{ \"ts\" : { \"\$ts\" : $LATEST_DB_TIMESTAMP , \"\$inc\" : 1} }" | tee /opt/tayra/timestamp.out 1> /dev/null || error_exit "$LINENO: Unable to update timestamp.out file! Aborting"
+		echo -n "{ \"ts\" : { \"\$ts\" : $LATEST_DB_TIMESTAMP , \"\$inc\" : 1} }" | tee /opt/tayra/timestamp.out 1> /dev/null || error_exit "$(date -u) $LINENO: Unable to update timestamp.out file! Aborting"
 
 		# Trigger mongodump to write full backup to /data/backup/mongodb/full
-		mongodump $AUTHOPT -o $FULLBACKUP_DIR || error_exit "$LINENO: Unable to take backup using mongodump"
+		mongodump $AUTHOPT -o $FULLBACKUP_DIR || error_exit "$(date -u) $LINENO: Unable to take backup using mongodump"
 		#EXITSTATUS2=`echo $?`
 	fi
 
 	# Tayra backup run under $TAYRA_DIR as working directory so that the timestamp.out is picked up by the processes
-	cd $TAYRA_DIR || error_exit "$LINENO: Cannot change directory! Aborting"
+	cd $TAYRA_DIR || error_exit "$(date -u) $LINENO: Cannot change directory! Aborting"
 	if [ "$SECURE" = true ] ; then
 		/opt/tayra/backup_expect.sh $BACKUP_USERNAME $BACKUP_PASSWORD $CURRENT_DATE 1> /dev/null &
 	else
@@ -158,12 +158,12 @@ trap clean_up HUP INT TERM
 if [ -f "$LATEST_ARCHIVE" ]; then
 	LATEST_ARCHIVE_DATE=`ls -ld --time-style="+%F" $LATEST_ARCHIVE|awk '{print $6}'`
 	DATE_DIFFERENCE=$(echo "((`date -d "$CURRENT_DATE" +%s`) - (`date -d "$LATEST_ARCHIVE_DATE" +%s`))/86400"|bc -l|cut -d "." -f1)
-	echo "Last Archive was taken $DATE_DIFFERENCE days ago"
+	echo "$(date -u) ${PROGNAME}: Last Archive was taken $DATE_DIFFERENCE days ago"
 
 	if [ "$DATE_DIFFERENCE" -lt "$FULLBACKUP_FREQUENCY" ]; then
 		# full backup is not required
 		FULL_BACKUP=false 
-		echo "Full backup not required"
+		echo "$(date -u) ${PROGNAME}: Full backup not required"
 	fi	
 fi
 
@@ -173,7 +173,7 @@ IS_MASTER=`mongo --quiet --eval "d=db.isMaster(); print( d['ismaster'] );"` #
 if [ "$IS_MASTER" = true ] ; then
 	# Try stepping down
 	##  	mongo --quiet --eval "rs.stepDown();"
-	echo "Could not proceed with the backup as I am the Primary node" && error_exit "$LINENO: Unable to take backup using mongodump. Aborting"
+	echo "$(date -u) ${PROGNAME}: Could not proceed with the backup as I am the Primary node" && error_exit "$LINENO: Unable to take backup using mongodump. Aborting"
 else 
 	# I am a secondary node, safe to proceed with the backup 
 	runbackup
