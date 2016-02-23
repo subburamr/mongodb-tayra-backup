@@ -1,0 +1,14 @@
+# log rotate configuration
+/var/log/mongodb_backup.log
+{
+	rotate 4
+	monthly
+	missingok
+	notifempty
+	delaycompress
+	compress
+	postrotate
+		# remove temporary seek file used by monitoring - check_log3.pl nagios plugin
+		rm -f /tmp/mongodb_backup.log.seek 2>&1 || true
+	endscript
+}
