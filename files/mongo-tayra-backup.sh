@@ -4,25 +4,10 @@
 # Description		: This script performs MongoDB full backup using mongodump and Incremental backup using the Tayra tool
 # VERSION		: 1.2
 # Author		: Subburam Rajaram
-# Date			: 23.2.2016
+# Date			: 21.2.2016
 # ------------------------------------------------------------------------------------------------------------------------------------
 
-# Backup Directory Structure
-# /data/backup/mongodb
-# ├── archive            				- Archived backups
-# ├── full						- Latest full backup taken with mongodump
-# ├── incremental				- Latest Incremental backup with Tayra
-# 
-#
-# /opt/tayra  						- Tayra program
-#     ├── backup.sh					- Tayra	Incremental Backup script
-#     ├── restore.sh					- Tayra Restore Script
-#     └── timestamp.out					- Tayra stores oplog after the indicated timestamp present in this file.
-
-# On exit of tayra process it should update timestamp.out, so it should not be sent (kill -9) SIGKILL.
-# Modification, the tayra script is to be spawned via expect and the spawned process ignores HUP signal. So it should be terminated with kill -15(SIGTERM)
-
-FULLBACKUP_FREQUENCY=14  		# Default no. of days, can be overridden with command line parameter -d
+FULLBACKUP_FREQUENCY=14  		# Default no. of days for full backup, can be overridden with command line parameter -d
 FULL_BACKUP=true
 FULLBACKUP_DIR=/data/backup/mongodb/full
 LATEST_ARCHIVE=/data/backup/mongodb/archive/archive_latest.tar.gz
@@ -33,7 +18,6 @@ AUTHOPT=""						# AUTHOPT string for use with mongodump
 SECURE=false					
 PROGNAME=$(basename $0)
 LOGSTAMP="$(date) $(hostname) ${PROGNAME}"
-
 
 echo "$LOGSTAMP: Initiating the script"
 usage () {
@@ -50,6 +34,8 @@ usage () {
   echo ""
   exit 1
 }
+
+trap error_exit "Kill signal recevied! Aborting" HUP INT TERM
 
 # Exit on Error
 error_exit() {
@@ -90,7 +76,7 @@ while getopts "d:u:p:" opt; do
 done
 
 
-# Cleanup old backup processes
+# kill old backup processes
 OLD_BACKUP_PROCS=$(ps aux | grep '/data/backup/mongodb'|grep -v grep|awk '{print $2}')
 if [ -n "$OLD_BACKUP_PROCS" ]; then
 	echo "$LOGSTAMP: Terminating old backup processes"
@@ -107,8 +93,7 @@ fi
 # Archive backup and clean up tasks
 archive_prev_backup() {
 	echo "$LOGSTAMP: Archiving previous backup"
-	tar -P --numeric-owner --preserve-permissions -czf /data/backup/mongodb/archive/archive_$CURRENT_DATE.tar.gz /data/backup/mongodb/full /data/backup/mongodb/incremental || error_exit "
-	 Unable to archive previous backup! Aborting"
+	tar -P --numeric-owner --preserve-permissions -czf /data/backup/mongodb/archive/archive_$CURRENT_DATE.tar.gz /data/backup/mongodb/full /data/backup/mongodb/incremental || error_exit " Unable to archive previous backup! Aborting"
 	rm -f /data/backup/mongodb/archive/archive_latest.tar.gz
 	rm -rf /data/backup/mongodb/full/* /data/backup/mongodb/incremental/*
 	ln -s /data/backup/mongodb/archive/archive_$CURRENT_DATE.tar.gz /data/backup/mongodb/archive/archive_latest.tar.gz
@@ -127,11 +112,11 @@ runbackup() {
 		LATEST_DB_TIMESTAMP=`mongo local $AUTHOPT --eval 'db.oplog.rs.find({}, {ts:1}).sort({$natural:-1}).limit(1).forEach(printjson)'|tail -1| awk -F'[(,]' '{print $2}'`
 		echo $LATEST_DB_TIMESTAMP
 
-		# Write LATEST_TIMESTAMP to timestamp.out file under /opt/tayra
+		# Write LATEST_TIMESTAMP to /opt/tayra/timestamp.out
 		echo -n "{ \"ts\" : { \"\$ts\" : $LATEST_DB_TIMESTAMP , \"\$inc\" : 1} }" | tee /opt/tayra/timestamp.out 1> /dev/null || error_exit "Unable to update timestamp.out file! Aborting"
 
-		# Trigger mongodump to write full backup to /data/backup/mongodb/full
-		mongodump $AUTHOPT -o $FULLBACKUP_DIR || error_exit "Unable to take backup using mongodump"
+		# Trigger mongodump to write full backup
+		mongodump $AUTHOPT -o $FULLBACKUP_DIR || error_exit "Unable to take backup using mongodump! Aborting"
 	fi
 
 	cd $TAYRA_DIR || error_exit "Cannot change directory! Aborting"
@@ -141,8 +126,6 @@ runbackup() {
 		/opt/tayra/backup.sh -f /data/backup/mongodb/incremental/backup.log.$CURRENT_DATE -t 1> /dev/null &
 	fi 
 }
-
-trap clean_up HUP INT TERM
 
 if [ -f "$LATEST_ARCHIVE" ]; then
 	LATEST_ARCHIVE_DATE=`ls -ld --time-style="+%F" $LATEST_ARCHIVE|awk '{print $6}'`
@@ -156,9 +139,9 @@ if [ -f "$LATEST_ARCHIVE" ]; then
 fi
 
 # Check if the host is master 
-IS_MASTER=`mongo --quiet --eval "d=db.isMaster(); print( d['ismaster'] );"` #
+IS_MASTER=`mongo --quiet --eval "d=db.isMaster(); print( d['ismaster'] );"`
 if [ "$IS_MASTER" = true ] ; then
-	error_exit "Unable to take backup as I am the Primary node. Aborting"
+	error_exit "Unable to take backup as I am the Primary node! Aborting"
 else 
 	# I am a secondary node, safe to proceed with the backup 
 	runbackup
