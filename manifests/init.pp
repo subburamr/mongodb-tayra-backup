@@ -75,4 +75,19 @@ class mongodb-tayra-backup()
                 ensure  => present,
         }
 
+        file { "/usr/lib/nagios/plugins/check_log3.pl":
+                owner   => root,
+                group   => root,
+                mode    => 755,
+                ensure  => present,
+                source  => 'puppet:///modules/mongodb-tayra-backup/check_log3.pl',
+        }
+
+        file { "/etc/logrotate.d/mongodb-backup":
+                owner   => root,
+                group   => root,
+                mode    => 644,
+                ensure  => present,
+                source  => 'puppet:///modules/mongodb-tayra-backup/mongodb-backup',
+        }
 }
