@@ -35,7 +35,7 @@ usage () {
   exit 1
 }
 
-trap error_exit "Kill signal recevied! Aborting" HUP INT TERM
+trap 'error_exit "Kill signal recevied! Aborting"' HUP INT TERM
 
 # Exit on Error
 error_exit() {
