@@ -2,9 +2,9 @@
 # ------------------------------------------------------------------------------------------------------------------------------------
 # Title			: MongoDB Backup
 # Description		: This script performs MongoDB full backup using mongodump and Incremental backup using the Tayra tool
-# VERSION		: 1.1
+# VERSION		: 1.2
 # Author		: Subburam Rajaram
-# Date			: 15.1.2016
+# Date			: 23.2.2016
 # ------------------------------------------------------------------------------------------------------------------------------------
 
 # Backup Directory Structure
@@ -19,9 +19,7 @@
 #     ├── restore.sh					- Tayra Restore Script
 #     └── timestamp.out					- Tayra stores oplog after the indicated timestamp present in this file.
 
-
-
-# On exit of tayra process it should update timestamp.out, so it should not be sent (kill -9)SIGKILL.
+# On exit of tayra process it should update timestamp.out, so it should not be sent (kill -9) SIGKILL.
 # Modification, the tayra script is to be spawned via expect and the spawned process ignores HUP signal. So it should be terminated with kill -15(SIGTERM)
 
 FULLBACKUP_FREQUENCY=14  		# Default no. of days, can be overridden with command line parameter -d
@@ -32,9 +30,10 @@ TAYRA_DIR=/opt/tayra
 CURRENT_DATE=`date +%F`
 OPT="" 							# OPT string for use with Tayra
 AUTHOPT=""						# AUTHOPT string for use with mongodump
-SECURE=false					# Boolean to check if the DB requires authentication
+SECURE=false					
 PROGNAME=$(basename $0)
 LOGSTAMP="$(date) $(hostname) ${PROGNAME}"
+
 
 echo "$LOGSTAMP: Initiating the script"
 usage () {
@@ -95,7 +94,7 @@ done
 OLD_BACKUP_PROCS=$(ps aux | grep '/data/backup/mongodb'|grep -v grep|awk '{print $2}')
 if [ -n "$OLD_BACKUP_PROCS" ]; then
 	echo "$LOGSTAMP: Terminating old backup processes"
-	kill -15 $OLD_BACKUP_PROCS || error_exit "$LINENO: The previous backup processes could not be killed! Aborting"						
+	kill -15 $OLD_BACKUP_PROCS || error_exit "The previous backup processes could not be killed! Aborting"						
 fi
 
 # Do we need username/password to access database
@@ -108,7 +107,8 @@ fi
 # Archive backup and clean up tasks
 archive_prev_backup() {
 	echo "$LOGSTAMP: Archiving previous backup"
-	tar -P --numeric-owner --preserve-permissions -czf /data/backup/mongodb/archive/archive_$CURRENT_DATE.tar.gz /data/backup/mongodb/full /data/backup/mongodb/incremental || error_exit "$LINENO: Unable to archive previous backup! Aborting"
+	tar -P --numeric-owner --preserve-permissions -czf /data/backup/mongodb/archive/archive_$CURRENT_DATE.tar.gz /data/backup/mongodb/full /data/backup/mongodb/incremental || error_exit "
+	 Unable to archive previous backup! Aborting"
 	rm -f /data/backup/mongodb/archive/archive_latest.tar.gz
 	rm -rf /data/backup/mongodb/full/* /data/backup/mongodb/incremental/*
 	ln -s /data/backup/mongodb/archive/archive_$CURRENT_DATE.tar.gz /data/backup/mongodb/archive/archive_latest.tar.gz
@@ -128,13 +128,13 @@ runbackup() {
 		echo $LATEST_DB_TIMESTAMP
 
 		# Write LATEST_TIMESTAMP to timestamp.out file under /opt/tayra
-		echo -n "{ \"ts\" : { \"\$ts\" : $LATEST_DB_TIMESTAMP , \"\$inc\" : 1} }" | tee /opt/tayra/timestamp.out 1> /dev/null || error_exit "$LINENO: Unable to update timestamp.out file! Aborting"
+		echo -n "{ \"ts\" : { \"\$ts\" : $LATEST_DB_TIMESTAMP , \"\$inc\" : 1} }" | tee /opt/tayra/timestamp.out 1> /dev/null || error_exit "Unable to update timestamp.out file! Aborting"
 
 		# Trigger mongodump to write full backup to /data/backup/mongodb/full
-		mongodump $AUTHOPT -o $FULLBACKUP_DIR || error_exit "$LINENO: Unable to take backup using mongodump"
+		mongodump $AUTHOPT -o $FULLBACKUP_DIR || error_exit "Unable to take backup using mongodump"
 	fi
 
-	cd $TAYRA_DIR || error_exit "$LINENO: Cannot change directory! Aborting"
+	cd $TAYRA_DIR || error_exit "Cannot change directory! Aborting"
 	if [ "$SECURE" = true ] ; then
 		/opt/tayra/backup_expect.sh $BACKUP_USERNAME $BACKUP_PASSWORD $CURRENT_DATE 1> /dev/null &
 	else
@@ -158,7 +158,7 @@ fi
 # Check if the host is master 
 IS_MASTER=`mongo --quiet --eval "d=db.isMaster(); print( d['ismaster'] );"` #
 if [ "$IS_MASTER" = true ] ; then
-	error_exit "$LINENO: Unable to take backup as I am the Primary node. Aborting"
+	error_exit "Unable to take backup as I am the Primary node. Aborting"
 else 
 	# I am a secondary node, safe to proceed with the backup 
 	runbackup
